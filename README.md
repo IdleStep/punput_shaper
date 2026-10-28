@@ -4,10 +4,6 @@ A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensati
 
 **Punput Shaper periodically sends a joke to your Klipper console.** Jokes come from a built-in list of 3D printing puns (works offline) or from a free public joke, fact or advice API.
 
-![Mainsail console after running PUNPUT_SHAPER twice, each run printing a printer pun](example_manual.png)
-
-Running `PUNPUT_SHAPER` twice by hand. The newest message is at the top, so each command sits below its joke.
-
 > ⚠️ **Requires** [Kalico](https://docs.kalico.gg/) or [Klipper](https://www.klipper3d.org/), with Moonraker for updates. Punput Shaper is a Klipper host module and needs nothing else installed.
 
 ## Installation
@@ -15,18 +11,18 @@ Running `PUNPUT_SHAPER` twice by hand. The newest message is at the top, so each
 Run this on your printer's host:
 
 ```bash
-cd ~ && git clone https://github.com/IdleStep/punput_shaper.git && ./punput_shaper/install.sh
+cd ~ && git clone https://github.com/IdleStep/punput_shaper.git && python3 punput_shaper/install.py
 ```
 
 The installer is safe to run again. In this order, it:
 
-1. backs up `printer.cfg` and `moonraker.conf`, as `printer.cfg.before-punput-shaper-<date>` and `moonraker.conf.before-punput-shaper-<date>`
-2. adds a `[punput_shaper]` section to `printer.cfg`, before the `SAVE_CONFIG` block
-3. adds an `[update_manager punput_shaper]` section to `moonraker.conf`, so Moonraker updates it and restarts Klipper afterwards
-4. links `punput_shaper.py` into Klipper (`klippy/plugins` on Kalico, `klippy/extras` on Klipper) and keeps it out of Klipper's `git status`
-5. restarts Moonraker and Klipper, unless a print is running
+1. links `punput_shaper.py` into Klipper (`klippy/plugins` on Kalico, `klippy/extras` on Klipper) and keeps it out of Klipper's `git status`
+2. backs up `printer.cfg` and `moonraker.conf` once, as `printer.cfg.before-punput-shaper` and `moonraker.conf.before-punput-shaper`
+3. adds a `[punput_shaper]` section to `printer.cfg`, before the `SAVE_CONFIG` block
+4. adds an `[update_manager punput_shaper]` section to `moonraker.conf`, so Moonraker updates it and restarts Klipper afterwards
+5. restarts Moonraker and Klipper, unless a print is running or paused
 
-Add these options to the command, for example `./punput_shaper/install.sh -n`:
+Add these options to the command, for example `python3 punput_shaper/install.py -n`:
 
 | Option | Effect |
 | --- | --- |
@@ -35,8 +31,6 @@ Add these options to the command, for example `./punput_shaper/install.sh -n`:
 | `-u`, `--uninstall` | Remove Punput Shaper |
 | `-k`, `--klipper-dir` | Klipper directory, if it isn't `~/klipper` |
 | `-c`, `--config-dir` | Config directory, if it isn't `~/printer_data/config` |
-| `-p`, `--printer-cfg` | `printer.cfg`, if it isn't in the config directory |
-| `-m`, `--moonraker-conf` | `moonraker.conf`, if it isn't in the config directory |
 | `--moonraker-url` | Moonraker's address, if it isn't `http://localhost:7125` |
 
 <details>
@@ -63,7 +57,6 @@ Add these options to the command, for example `./punput_shaper/install.sh -n`:
    path: ~/punput_shaper
    origin: https://github.com/IdleStep/punput_shaper.git
    primary_branch: main
-   is_system_service: False
    managed_services: klipper
    ```
 
@@ -84,13 +77,13 @@ loop_drift: 30
 only_while_printing: True
 ```
 
-| Option | Default | Optional | Description |
-| --- | --- | --- | --- |
-| `source` | `local` | `True` | Joke source: `local`, `icanhazdadjoke`, `official`, `jokeapi`, `pun`, `uselessfacts`, `adviceslip`, `corporatebs` or `norris` (see [Joke sources](#joke-sources)) |
-| `loop_at_startup` | `True` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
-| `loop_duration` | `900` | `True` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
-| `loop_drift` | `30` | `True` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
-| `only_while_printing` | `True` | `True` | Only tell jokes while Klipper's `idle_timeout` state is `Printing`. This also covers homing, heating and macros, not just print jobs |
+| Option | Default | Description |
+| --- | --- | --- |
+| `source` | `local` | Joke source: `local`, `icanhazdadjoke`, `official`, `jokeapi`, `pun`, `uselessfacts`, `adviceslip`, `corporatebs` or `norris` (see [Joke sources](#joke-sources)) |
+| `loop_at_startup` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
+| `loop_duration` | `900` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
+| `loop_drift` | `30` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
+| `only_while_printing` | `True` | Only tell jokes while Klipper's `idle_timeout` state is `Printing`. This also covers homing, heating and macros, not just print jobs |
 
 ## Usage
 
@@ -104,6 +97,8 @@ Run these in the console, or call them from your own macros:
 | `PUNPUT_SHAPER_STOP` | Stop the joke loop |
 
 ![Mainsail console showing the loop being started, three jokes arriving about eight seconds apart, and the loop being stopped](example_loop.png)
+
+The newest message is at the top, so each command sits below its joke.
 
 ## Joke sources
 
@@ -121,19 +116,13 @@ Run these in the console, or call them from your own macros:
 
 Online sources need internet access from the printer's host. Jokes are fetched in the background, so a slow or unreachable API never holds up your printer.
 
-To try a source without editing `printer.cfg`, name it in the command:
-
-```text
-PUNPUT_SHAPER SOURCE=pun
-```
-
-The capture below runs this for `icanhazdadjoke`, `official` and `pun` in turn. The newest message is at the top, so each command sits below its joke.
-
-![Mainsail console running PUNPUT_SHAPER with the icanhazdadjoke, official and pun sources in turn](example_sources.png)
+To try a source without editing `printer.cfg`, name it in the command, for example `PUNPUT_SHAPER SOURCE=pun`.
 
 ## Troubleshooting
 
-If `[punput_shaper]` is reported as an unknown section, the module isn't linked into Klipper. Run `./punput_shaper/install.sh` again and restart Klipper.
+If `[punput_shaper]` is reported as an unknown section, the module isn't linked into Klipper. Run `python3 punput_shaper/install.py` again and restart Klipper.
+
+If you move the clone, fix `path:` in the `[update_manager punput_shaper]` section of `moonraker.conf` and run the installer again. The installer doesn't change a section that is already there.
 
 If jokes don't appear, look for the module's messages in the Klipper log:
 

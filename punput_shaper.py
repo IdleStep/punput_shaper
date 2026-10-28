@@ -8,10 +8,13 @@ import logging
 import os
 import random
 import threading
+import time
 import urllib.request
 
 USER_AGENT = "punput_shaper (https://github.com/IdleStep/punput_shaper)"
-TIMEOUT = 4  # seconds per request
+TIMEOUT = 4  # seconds per socket operation
+DEADLINE = 10  # seconds for a whole request, so a trickling server cannot hold the worker
+MAX_BYTES = 65536
 # The module is linked into Klipper, so look next to the real file for the joke list.
 LOCAL_JOKES = os.path.join(os.path.dirname(os.path.realpath(__file__)), "punput.txt")
 
@@ -20,8 +23,15 @@ def fetch_json(url):
     request = urllib.request.Request(
         url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
     )
+    deadline = time.monotonic() + DEADLINE
+    body = b""
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.load(response)
+        while len(body) < MAX_BYTES and time.monotonic() < deadline:
+            chunk = response.read1(4096)  # what has arrived so far, so the deadline gets checked
+            if not chunk:
+                return json.loads(body)
+            body += chunk
+    raise ValueError("response too large or too slow")
 
 
 def get_dadjoke():
@@ -62,7 +72,7 @@ def get_corporate_bs():
 
 
 def get_local_joke():
-    with open(LOCAL_JOKES, encoding="utf-8") as f:
+    with open(LOCAL_JOKES, encoding="utf-8-sig") as f:
         jokes = [line.strip() for line in f if line.strip()]
     if not jokes:
         raise ValueError("no jokes found in %s" % (LOCAL_JOKES,))
@@ -92,7 +102,7 @@ class PunputShaper:
         self.loop_duration = config.getint("loop_duration", 900, minval=1)
         self.loop_drift = config.getint("loop_drift", 30, minval=0)
         self.only_while_printing = config.getboolean("only_while_printing", True)
-        self.busy = False
+        self.thread = None
         self.timer = self.reactor.register_timer(self._loop_event, self.reactor.NEVER)
         self.printer.register_event_handler("klippy:ready", self._handle_ready)
         self.gcode.register_command(
@@ -131,10 +141,10 @@ class PunputShaper:
 
     def _tell(self, source):
         """Fetch a joke on a worker thread so a slow API never holds up Klipper."""
-        if self.busy:
+        if self.thread is not None and self.thread.is_alive():
             return False
-        self.busy = True
-        threading.Thread(target=self._worker, args=(source,), daemon=True).start()
+        self.thread = threading.Thread(target=self._worker, args=(source,), daemon=True)
+        self.thread.start()
         return True
 
     def _worker(self, source):
@@ -143,8 +153,6 @@ class PunputShaper:
         except Exception as e:
             logging.exception("punput_shaper: source '%s' failed", source)
             message = "Punput Shaper: could not get a joke from '%s': %s" % (source, e)
-        finally:
-            self.busy = False
         self.reactor.register_async_callback(
             lambda eventtime: self.gcode.respond_info(message, log=False))
 

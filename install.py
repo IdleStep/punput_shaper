@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Install or remove Punput Shaper as a Klipper/Kalico plugin.
 
-Run it through install.sh from the cloned repository:
+Run it from the cloned repository:
 
-    ./install.sh                    install (safe to run again)
-    ./install.sh -u                 uninstall
-    ./install.sh -n                 show what would change and change nothing
+    python3 install.py              install (safe to run again)
+    python3 install.py -u           uninstall
+    python3 install.py -n           show what would change and change nothing
 
 It backs up printer.cfg and moonraker.conf, adds a [punput_shaper] section to printer.cfg and
 an update_manager entry to moonraker.conf, links punput_shaper.py into Klipper, and restarts
-Moonraker and Klipper unless the printer is printing.
+Moonraker and Klipper unless a print is running or paused.
 """
 import argparse
-import datetime
 import json
 import os
 import re
@@ -25,7 +24,7 @@ import urllib.request
 
 REPO = os.path.dirname(os.path.realpath(__file__))
 MODULE = "punput_shaper.py"
-BEGIN = "# >>> punput_shaper (added by install.sh)"
+BEGIN = "# >>> punput_shaper (added by install.py)"
 END = "# <<< punput_shaper"
 DEFAULT_ORIGIN = "https://github.com/IdleStep/punput_shaper.git"
 SAVE_CONFIG = "#*# <---------------------- SAVE_CONFIG"
@@ -80,43 +79,22 @@ def edit_printer_cfg(text):
 
 
 def edit_moonraker(text, path, origin):
-    """Add or update [update_manager punput_shaper]; return (new text, notes)."""
+    """Add [update_manager punput_shaper] unless moonraker.conf has one; return (new text, notes)."""
     lines = text.split("\n")
-    wanted = {"path": path, "origin": origin, "managed_services": "klipper"}
-    start = next((i for i, line in enumerate(lines)
-                  if (section_name(line) or "") == "update_manager punput_shaper"), None)
-    if start is None:
-        block = ["", BEGIN, "[update_manager punput_shaper]", "type: git_repo",
-                 "path: %s" % path, "origin: %s" % origin, "primary_branch: main",
-                 "is_system_service: False", "managed_services: klipper", END]
-        while lines and lines[-1].strip() == "":
-            lines.pop()
-        return "\n".join(lines + block) + "\n", ["added [update_manager punput_shaper]"]
-    stop = start + 1
-    while stop < len(lines) and section_name(lines[stop]) is None and lines[stop] != END:
-        stop += 1
-    section = lines[start + 1:stop]
-    notes = []
-    for key, value in wanted.items():
-        pattern = re.compile(r"^%s\s*[:=]\s*(.*?)\s*$" % key)
-        for n, line in enumerate(section):
-            match = pattern.match(line)
-            if match:
-                if match.group(1) != value:
-                    section[n] = "%s: %s" % (key, value)
-                    notes.append("set %s in [update_manager punput_shaper]" % key)
-                break
-        else:
-            section.insert(0, "%s: %s" % (key, value))
-            notes.append("set %s in [update_manager punput_shaper]" % key)
-    lines[start + 1:stop] = section
-    return "\n".join(lines), notes or ["[update_manager punput_shaper] is already correct"]
+    if any(section_name(line) == "update_manager punput_shaper" for line in lines):
+        return text, ["already has an [update_manager punput_shaper] section; left as it is "
+                      "(if you moved the clone, fix its path by hand)"]
+    block = ["", BEGIN, "[update_manager punput_shaper]", "type: git_repo", "path: %s" % path,
+             "origin: %s" % origin, "primary_branch: main", "managed_services: klipper", END]
+    while lines and lines[-1].strip() == "":
+        lines.pop()
+    return "\n".join(lines + block) + "\n", ["added [update_manager punput_shaper]"]
 
 
 def remove_block(text):
     """Remove the block this installer added, if it is still there."""
     pattern = re.compile(r"\n?%s\n.*?\n%s\n?" % (re.escape(BEGIN), re.escape(END)), re.S)
-    return pattern.sub("\n", text, count=1)
+    return pattern.sub("", text, count=1)
 
 
 # --- the installer ---
@@ -125,12 +103,10 @@ class Installer:
     def __init__(self, args):
         self.args = args
         self.dry = args.dry_run
-        self.stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.klipper = os.path.expanduser(args.klipper_dir)
         self.config_dir = os.path.expanduser(args.config_dir)
-        self.printer_cfg = os.path.expanduser(args.printer_cfg or os.path.join(self.config_dir, "printer.cfg"))
-        self.moonraker_conf = os.path.expanduser(
-            args.moonraker_conf or os.path.join(self.config_dir, "moonraker.conf"))
+        self.printer_cfg = os.path.join(self.config_dir, "printer.cfg")
+        self.moonraker_conf = os.path.join(self.config_dir, "moonraker.conf")
         plugins = os.path.join(self.klipper, "klippy", "plugins")
         self.module_dir = plugins if os.path.isdir(plugins) else os.path.join(self.klipper, "klippy", "extras")
         self.module_link = os.path.join(self.module_dir, MODULE)
@@ -141,6 +117,8 @@ class Installer:
 
     def check(self, remove):
         """Stop before changing anything if the install could not work."""
+        if os.geteuid() == 0:
+            sys.exit("Run this as your normal user, not root: it edits your config and links into Klipper.")
         if not os.path.isdir(os.path.join(self.klipper, "klippy")):
             sys.exit("Klipper was not found in %s. Use -k to point at it." % self.klipper)
         if not os.path.isfile(os.path.join(REPO, MODULE)):
@@ -174,20 +152,15 @@ class Installer:
             os.symlink(source, self.module_link)
         self.changed = True
 
-    def git_exclude(self, remove):
+    def git_exclude(self):
+        """Hide the link from Klipper's git status. Uninstall leaves the entry; it does no harm."""
         info = os.path.join(self.klipper, ".git", "info")
         entry = os.path.relpath(self.module_link, self.klipper)
         exclude = os.path.join(info, "exclude")
         if not os.path.isdir(info):
             return
         current = open(exclude).read() if os.path.exists(exclude) else ""
-        has = entry in current.split("\n")
-        if remove and has:
-            self.say("removing %s from Klipper's .git/info/exclude" % entry)
-            if not self.dry:
-                with open(exclude, "w") as f:
-                    f.write("\n".join(l for l in current.split("\n") if l != entry))
-        elif not remove and not has:
+        if entry not in current.split("\n"):
             self.say("hiding the link from Klipper's git status (.git/info/exclude)")
             if not self.dry:
                 with open(exclude, "a") as f:
@@ -202,10 +175,12 @@ class Installer:
         for note in notes:
             self.say("%s: %s" % (label, note))
         if new != old:
-            backup = "%s.before-punput-shaper-%s" % (path, self.stamp)
-            self.say("backing up %s to %s" % (os.path.basename(path), os.path.basename(backup)))
+            backup = path + ".before-punput-shaper"
+            if not os.path.exists(backup):  # keep the first one: it is the file as you had it
+                self.say("backing up %s to %s" % (os.path.basename(path), os.path.basename(backup)))
+                if not self.dry:
+                    shutil.copy2(path, backup)
             if not self.dry:
-                shutil.copy2(path, backup)
                 with open(path, "w") as f:
                     f.write(new)
             self.changed = True
@@ -218,7 +193,7 @@ class Installer:
         elif remove:
             self.edit_file(self.printer_cfg, lambda t: (remove_block(t), [
                 "removed the [punput_shaper] block" if BEGIN in t else
-                "no block added by install.sh; delete [punput_shaper] by hand if you want it gone"]), "printer.cfg")
+                "no block added by install.py; delete [punput_shaper] by hand if you want it gone"]), "printer.cfg")
         else:
             self.edit_file(self.printer_cfg, edit_printer_cfg, "printer.cfg")
         if not os.path.exists(self.moonraker_conf):
@@ -227,7 +202,7 @@ class Installer:
         if remove:
             self.edit_file(self.moonraker_conf, lambda t: (remove_block(t), [
                 "removed the update_manager block" if BEGIN in t else
-                "no block added by install.sh; delete [update_manager punput_shaper] by hand if you want it gone"]),
+                "no block added by install.py; delete [update_manager punput_shaper] by hand if you want it gone"]),
                            "moonraker.conf")
             return
         home = os.path.expanduser("~")
@@ -243,18 +218,19 @@ class Installer:
 
     def restart(self):
         if not self.changed:
-            self.say("nothing changed, so no restart is needed")
+            self.say("nothing changed, so nothing was restarted")
             return
         if self.args.no_restart or self.dry:
             self.say("not restarting; restart Moonraker and Klipper yourself to load the changes")
             return
         try:
             state = self.api("/printer/objects/query?print_stats")["result"]["status"]["print_stats"]["state"]
-        except (urllib.error.URLError, OSError, KeyError, ValueError):
-            print("Moonraker is not reachable at %s. Restart Moonraker and Klipper yourself." % self.args.moonraker_url)
+        except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
+            print("Could not read the print state from Moonraker at %s (%s). Restart Moonraker and Klipper "
+                  "yourself." % (self.args.moonraker_url, e))
             return
-        if state == "printing":
-            print("The printer is printing, so nothing was restarted. Restart Klipper when the print is done.")
+        if state in ("printing", "paused"):
+            print("A print is running or paused, so nothing was restarted. Restart Klipper when it is done.")
             return
         print("restarting Moonraker, then Klipper")
         try:
@@ -272,9 +248,14 @@ class Installer:
 
     def run(self, remove):
         self.check(remove)
-        self.configs(remove)
+        # Install links the module before editing the configs, so a failure never leaves a config
+        # that names a module Klipper cannot load. Uninstall does the reverse.
+        if remove:
+            self.configs(remove)
         self.link(remove)
-        self.git_exclude(remove)
+        if not remove:
+            self.git_exclude()
+            self.configs(remove)
         self.restart()
         if remove:
             print("\nPunput Shaper is removed. The clone in %s is still there; delete it if you like." % REPO)
@@ -287,8 +268,6 @@ def main():
     parser.add_argument("-k", "--klipper-dir", default="~/klipper", help="Klipper directory (default ~/klipper)")
     parser.add_argument("-c", "--config-dir", default="~/printer_data/config",
                         help="config directory (default ~/printer_data/config)")
-    parser.add_argument("-p", "--printer-cfg", help="printer.cfg if it is not in the config directory")
-    parser.add_argument("-m", "--moonraker-conf", help="moonraker.conf if it is not in the config directory")
     parser.add_argument("--moonraker-url", default="http://localhost:7125", help="Moonraker address")
     parser.add_argument("-u", "--uninstall", action="store_true", help="remove Punput Shaper")
     parser.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
