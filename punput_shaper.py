@@ -42,6 +42,34 @@ def get_jokeapi():
     return fetch_json("https://v2.jokeapi.dev/joke/Programming?type=single&safe-mode")["joke"]
 
 
+def get_pun():
+    return fetch_json("https://v2.jokeapi.dev/joke/Pun?type=single&safe-mode")["joke"]
+
+
+def get_geek_joke():
+    return fetch_json("https://geek-jokes.sameerkumar.website/api?format=json")["joke"]
+
+
+def get_useless_fact():
+    return fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+
+
+def get_advice():
+    return fetch_json("https://api.adviceslip.com/advice")["slip"]["advice"]
+
+
+def get_corporate_bs():
+    return fetch_json("https://corporatebs-generator.sameerkumar.website/")["phrase"]
+
+
+def get_cat_fact():
+    return fetch_json("https://catfact.ninja/fact")["fact"]
+
+
+def get_excuse():
+    return fetch_json("https://excuser-three.vercel.app/v1/excuse")[0]["excuse"]
+
+
 def get_local_joke():
     with open(LOCAL_JOKES, encoding="utf-8") as f:
         jokes = [line.strip() for line in f if line.strip()]
@@ -55,6 +83,13 @@ SOURCES = {
     "official": get_official_joke,
     "norris": get_chuck_norris,
     "jokeapi": get_jokeapi,
+    "pun": get_pun,
+    "geekjokes": get_geek_joke,
+    "uselessfacts": get_useless_fact,
+    "adviceslip": get_advice,
+    "corporatebs": get_corporate_bs,
+    "catfacts": get_cat_fact,
+    "excuser": get_excuse,
     "local": get_local_joke,
 }
 
