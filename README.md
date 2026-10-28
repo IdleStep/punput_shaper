@@ -6,6 +6,8 @@ A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensati
 
 ![Mainsail console after running PUNPUT_SHAPER twice, each run printing a printer pun](example_manual.png)
 
+Running `PUNPUT_SHAPER` twice by hand. The newest message is at the top, so each command sits below its joke.
+
 > ⚠️ **Requires** Klipper with the [`gcode_shell_command`](https://github.com/dw-0/kiauh/blob/master/docs/gcode_shell_command.md) extension installed, or [Kalico](https://docs.kalico.gg/G-Code_Shell_Command.html). Python 3 is also required, which Klipper hosts already have.
 
 ## Installation
@@ -76,7 +78,7 @@ Run these in the console, or call them from your own macros:
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=1` | Start the joke loop |
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=0` | Stop the joke loop |
 
-Starting the loop, letting it run, and stopping it again. This capture used `variable_loop_duration: 8`, `variable_loop_drift: 2` and `variable_only_while_printing: False` so it fits on one screen:
+Mainsail lists the newest message first, so read this capture from the bottom: the loop is started, three jokes arrive, and the loop is stopped. It was taken with `variable_loop_duration: 8`, `variable_loop_drift: 2` and `variable_only_while_printing: False`.
 
 ![Mainsail console showing the loop being started, three jokes arriving about eight seconds apart, and the loop being stopped](example_loop.png)
 
@@ -101,6 +103,8 @@ SET_GCODE_VARIABLE MACRO=_PUNPUT_SHAPER_VARS VARIABLE=api VALUE='"jokeapi"'
 PUNPUT_SHAPER
 ```
 
+The capture below runs this for `icanhazdadjoke`, `official` and `jokeapi` in turn. The newest message is at the top, so each command sits below its joke.
+
 ![Mainsail console running PUNPUT_SHAPER with the icanhazdadjoke, official and jokeapi sources in turn](example_sources.png)
 
 ## Troubleshooting
@@ -112,24 +116,6 @@ python3 ~/printer_data/config/punput_shaper/punput_shaper.py local
 ```
 
 If the script works but nothing appears in the console, make sure `gcode_shell_command` is installed and Klipper was restarted.
-
-## Upgrading from punput_shaping
-
-The project was renamed from `punput_shaping` to `punput_shaper`, and the macros were renamed to match. To update an existing install:
-
-1. Move the folder and point Git at the new name:
-
-   ```bash
-   mv ~/printer_data/config/punput_shaping ~/printer_data/config/punput_shaper
-   git -C ~/printer_data/config/punput_shaper remote set-url origin https://github.com/IdleStep/punput_shaper.git
-   git -C ~/printer_data/config/punput_shaper pull
-   ```
-
-2. In `printer.cfg`, change the include to `[include punput_shaper/punput_shaper.cfg]` and rename your override section to `[gcode_macro _PUNPUT_SHAPER_VARS]`. The `variable_*` names are unchanged.
-3. In `moonraker.conf`, rename the section to `[update_manager punput_shaper]` and update `origin` and `path` as shown in [Installation](#installation).
-4. Restart Moonraker and Klipper.
-
-The macros are now `PUNPUT_SHAPER`, `PUNPUT_SHAPER_LOOP` and `PUNPUT_SHAPER_STARTUP`. Update any of your own macros that call the old names.
 
 ## License
 
