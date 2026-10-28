@@ -8,6 +8,7 @@ Sources: icanhazdadjoke, official, norris, jokeapi, local (default)
 import json
 import os
 import random
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -15,6 +16,11 @@ import urllib.request
 USER_AGENT = "punput_shaper (https://github.com/IdleStep/punput_shaper)"
 TIMEOUT = 4  # seconds; keep below the timeout of the gcode_shell_command
 LOCAL_JOKES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "punput.txt")
+# Words that keep a fact or an advice slip out of the console.
+UNSUITABLE = re.compile(
+    r"\b(rape\w*|sex\w*|porn\w*|nude|naked|genital\w*|penis|vagina|suicid\w*|murder\w*|molest\w*|abus\w*)\b",
+    re.I,
+)
 
 
 def fetch_json(url):
@@ -53,13 +59,24 @@ def get_geek_joke():
     return fetch_json("https://geek-jokes.sameerkumar.website/api?format=json")["joke"]
 
 
+def first_suitable(fetch, tries=3):
+    """Call fetch() until its text passes the UNSUITABLE check; the APIs have no filter of their own."""
+    for _ in range(tries):
+        text = fetch()
+        if not UNSUITABLE.search(text):
+            return text
+    raise ValueError(f"no suitable text after {tries} tries")
+
+
 def get_useless_fact():
-    fact = fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+    fact = first_suitable(
+        lambda: fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+    )
     return fact.replace("`", "'")  # the API writes apostrophes as backticks
 
 
 def get_advice():
-    return fetch_json("https://api.adviceslip.com/advice")["slip"]["advice"]
+    return first_suitable(lambda: fetch_json("https://api.adviceslip.com/advice")["slip"]["advice"])
 
 
 def get_corporate_bs():
