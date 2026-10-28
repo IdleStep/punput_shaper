@@ -6,3 +6,4 @@
 *.cfg text eol=lf
 *.txt text eol=lf
 *.md  text eol=lf
+*.sh  text eol=lf
