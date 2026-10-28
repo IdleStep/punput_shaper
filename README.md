@@ -78,11 +78,10 @@ Run these in the console, or call them from your own macros:
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=1` | Start the joke loop |
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=0` | Stop the joke loop |
 
-Mainsail lists the newest message first, so read this capture from the bottom: the loop is started, three jokes arrive, and the loop is stopped. It was taken with `variable_loop_duration: 8`, `variable_loop_drift: 2` and `variable_only_while_printing: False`.
-
 ![Mainsail console showing the loop being started, three jokes arriving about eight seconds apart, and the loop being stopped](example_loop.png)
 
-Without the console filter from [Installation](#installation), `gcode_shell_command` also prints a `Running Command` line and a `finished` line around every joke.
+> [!NOTE]
+> Without the console filter from [Installation](#installation), `gcode_shell_command` also prints a `Running Command` line and a `finished` line around every joke.
 
 ## Joke sources
 
@@ -98,7 +97,7 @@ Online sources need internet access from the printer's host and time out after 5
 
 To try a source without editing `printer.cfg`, set it from the console and run the macro. This change lasts until Klipper restarts:
 
-```gcode
+```text
 SET_GCODE_VARIABLE MACRO=_PUNPUT_SHAPER_VARS VARIABLE=api VALUE='"jokeapi"'
 PUNPUT_SHAPER
 ```
