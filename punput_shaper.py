@@ -12,7 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 
-USER_AGENT = "punput_shaping (https://github.com/IdleStep/punput_shaping)"
+USER_AGENT = "punput_shaper (https://github.com/IdleStep/punput_shaper)"
 TIMEOUT = 4  # seconds; keep below the timeout of the gcode_shell_command
 LOCAL_JOKES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "punput.txt")
 
