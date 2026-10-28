@@ -4,8 +4,7 @@ A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensati
 
 **Punput Shaper periodically sends a joke to your Klipper console.** Jokes come from a built-in list of 3D printing puns (works offline) or from a free public joke API.
 
-![Console showing a joke](example.png)
-![Console showing a joke between other messages](example2.png)
+![Mainsail console after running PUNPUT_SHAPER twice, each run printing a printer pun](example_manual.png)
 
 > ⚠️ **Requires** Klipper with the [`gcode_shell_command`](https://github.com/dw-0/kiauh/blob/master/docs/gcode_shell_command.md) extension installed, or [Kalico](https://docs.kalico.gg/G-Code_Shell_Command.html). Python 3 is also required, which Klipper hosts already have.
 
@@ -75,6 +74,12 @@ Run these in the console, or call them from your own macros:
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=1` | Start the joke loop |
 | `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=0` | Stop the joke loop |
 
+Starting the loop, letting it run, and stopping it again. This capture used `variable_loop_duration: 8`, `variable_loop_drift: 2` and `variable_only_while_printing: False` so it fits on one screen:
+
+![Mainsail console showing the loop being started, three jokes arriving about eight seconds apart, and the loop being stopped](example_loop.png)
+
+The `Running Command` and `finished` lines come from `gcode_shell_command`. The optional console filter from [Installation](#installation) hides them.
+
 ## Joke sources
 
 | `variable_api` | Source | Notes |
@@ -86,6 +91,15 @@ Run these in the console, or call them from your own macros:
 | `norris` | [chucknorris.io](https://api.chucknorris.io/) | Chuck Norris facts. This API has no content filter |
 
 Online sources need internet access from the printer's host and time out after 5 seconds.
+
+To try a source without editing `printer.cfg`, set it from the console and run the macro. This change lasts until Klipper restarts:
+
+```gcode
+SET_GCODE_VARIABLE MACRO=_PUNPUT_SHAPER_VARS VARIABLE=api VALUE='"jokeapi"'
+PUNPUT_SHAPER
+```
+
+![Mainsail console running PUNPUT_SHAPER with the icanhazdadjoke, official and jokeapi sources in turn](example_sources.png)
 
 ## Troubleshooting
 
