@@ -18,16 +18,26 @@ Run this on your printer's host:
 cd ~ && git clone https://github.com/IdleStep/punput_shaper.git && ./punput_shaper/install.sh
 ```
 
-The installer is safe to run again, and it:
+The installer is safe to run again. In this order, it:
 
-- links `punput_shaper.py` into Klipper (`klippy/plugins` on Kalico, `klippy/extras` on Klipper) and keeps it out of Klipper's `git status`
-- adds a `[punput_shaper]` section to `printer.cfg`, before the `SAVE_CONFIG` block
-- adds an `[update_manager punput_shaper]` section to `moonraker.conf`, so Moonraker updates it and restarts Klipper afterwards
-- backs up both files first, as `printer.cfg.before-punput-shaper-<date>`, and restarts Moonraker and Klipper unless a print is running
+1. backs up `printer.cfg` and `moonraker.conf`, as `printer.cfg.before-punput-shaper-<date>` and `moonraker.conf.before-punput-shaper-<date>`
+2. adds a `[punput_shaper]` section to `printer.cfg`, before the `SAVE_CONFIG` block
+3. adds an `[update_manager punput_shaper]` section to `moonraker.conf`, so Moonraker updates it and restarts Klipper afterwards
+4. links `punput_shaper.py` into Klipper (`klippy/plugins` on Kalico, `klippy/extras` on Klipper) and keeps it out of Klipper's `git status`
+5. restarts Moonraker and Klipper, unless a print is running
 
-An older install that used `[include punput_shaper/punput_shaper.cfg]` is migrated: the include goes away and your `_PUNPUT_SHAPER_VARS` settings move into the new section.
+Add these options to the command, for example `./punput_shaper/install.sh -n`:
 
-Options: `-n` shows what would change without changing anything, `-r` skips the restart, and `-k`, `-c`, `-p` and `-m` point at a Klipper directory, config directory, `printer.cfg` or `moonraker.conf` in a non-standard place. To remove it, run `./punput_shaper/install.sh -u`.
+| Option | Effect |
+| --- | --- |
+| `-n`, `--dry-run` | Show what would change, and change nothing |
+| `-r`, `--no-restart` | Don't restart Moonraker and Klipper |
+| `-u`, `--uninstall` | Remove Punput Shaper |
+| `-k`, `--klipper-dir` | Klipper directory, if it isn't `~/klipper` |
+| `-c`, `--config-dir` | Config directory, if it isn't `~/printer_data/config` |
+| `-p`, `--printer-cfg` | `printer.cfg`, if it isn't in the config directory |
+| `-m`, `--moonraker-conf` | `moonraker.conf`, if it isn't in the config directory |
+| `--moonraker-url` | Moonraker's address, if it isn't `http://localhost:7125` |
 
 <details>
 <summary>Install by hand</summary>
@@ -63,7 +73,7 @@ Options: `-n` shows what would change without changing anything, `-r` skips the 
 
 ## Configuration
 
-Everything is optional. Add only the options you want to change to the `[punput_shaper]` section in `printer.cfg`:
+Set these in the `[punput_shaper]` section of `printer.cfg`:
 
 ```ini
 [punput_shaper]
@@ -74,13 +84,13 @@ loop_drift: 30
 only_while_printing: True
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `source` | `local` | Joke source: `local`, `icanhazdadjoke`, `official`, `jokeapi`, `pun`, `uselessfacts`, `adviceslip`, `corporatebs` or `norris` (see [Joke sources](#joke-sources)) |
-| `loop_at_startup` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
-| `loop_duration` | `900` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
-| `loop_drift` | `30` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
-| `only_while_printing` | `True` | Only tell jokes while Klipper's `idle_timeout` state is `Printing`. This also covers homing, heating and macros, not just print jobs |
+| Option | Default | Optional | Description |
+| --- | --- | --- | --- |
+| `source` | `local` | `True` | Joke source: `local`, `icanhazdadjoke`, `official`, `jokeapi`, `pun`, `uselessfacts`, `adviceslip`, `corporatebs` or `norris` (see [Joke sources](#joke-sources)) |
+| `loop_at_startup` | `True` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
+| `loop_duration` | `900` | `True` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
+| `loop_drift` | `30` | `True` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
+| `only_while_printing` | `True` | `True` | Only tell jokes while Klipper's `idle_timeout` state is `Printing`. This also covers homing, heating and macros, not just print jobs |
 
 ## Usage
 

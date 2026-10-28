@@ -7,13 +7,11 @@ Run it through install.sh from the cloned repository:
     ./install.sh -u                 uninstall
     ./install.sh -n                 show what would change and change nothing
 
-It links punput_shaper.py into Klipper, adds a [punput_shaper] section to printer.cfg and
-an update_manager entry to moonraker.conf (both backed up first), and restarts Moonraker and
-Klipper unless the printer is printing. An older install that used [include punput_shaper/...]
-is migrated: the include goes, and the settings in _PUNPUT_SHAPER_VARS carry over.
+It backs up printer.cfg and moonraker.conf, adds a [punput_shaper] section to printer.cfg and
+an update_manager entry to moonraker.conf, links punput_shaper.py into Klipper, and restarts
+Moonraker and Klipper unless the printer is printing.
 """
 import argparse
-import ast
 import datetime
 import json
 import os
@@ -32,15 +30,10 @@ END = "# <<< punput_shaper"
 DEFAULT_ORIGIN = "https://github.com/IdleStep/punput_shaper.git"
 SAVE_CONFIG = "#*# <---------------------- SAVE_CONFIG"
 HEADER = re.compile(r"^\[([^\]]+)\]")
-LEGACY_INCLUDE = re.compile(r"^\s*\[include\s+punput_shap(?:er|ing)/punput_shaper\.cfg\s*\]\s*(#.*)?$")
-LEGACY_SECTIONS = ("gcode_macro _punput_shaper_vars", "gcode_macro _punputshaping_vars")
-LEGACY_OPTIONS = {
-    "variable_api": "source",
-    "variable_loop_at_startup": "loop_at_startup",
-    "variable_loop_duration": "loop_duration",
-    "variable_loop_drift": "loop_drift",
-    "variable_only_while_printing": "only_while_printing",
-}
+# The setup from before Punput Shaper was a plugin. It defines the same G-code command.
+OLD_STYLE = re.compile(
+    r"^\s*\[(include\s+punput_shap(er|ing)/punput_shaper\.cfg|gcode_macro\s+_punput_?shap(er|ing)_vars)\s*\]",
+    re.I | re.M)
 DEFAULTS = [
     ("source", "local", "local, icanhazdadjoke, official, jokeapi, pun, uselessfacts, adviceslip, corporatebs, norris"),
     ("loop_at_startup", "True", "start the joke loop when Klipper starts"),
@@ -57,23 +50,10 @@ def section_name(line):
     return match.group(1).strip().lower() if match else None
 
 
-def parse_legacy_option(line):
-    match = re.match(r"^(variable_\w+)\s*[:=]\s*(.*?)\s*(?:\s[#;].*)?$", line)
-    if not match or match.group(1) not in LEGACY_OPTIONS:
-        return None
-    raw = match.group(2)
-    try:
-        value = ast.literal_eval(raw)
-    except (ValueError, SyntaxError):
-        value = raw.strip("\"'")
-    name = LEGACY_OPTIONS[match.group(1)]
-    return name, (str(value).lower() if name == "source" else str(value))
-
-
-def new_section(settings):
+def new_section():
     lines = [BEGIN, "[punput_shaper]"]
     for name, default, comment in DEFAULTS:
-        line = "%s: %s" % (name, settings.get(name, default))
+        line = "%s: %s" % (name, default)
         if comment:
             line = line.ljust(24) + "# " + comment
         lines.append(line)
@@ -82,51 +62,21 @@ def new_section(settings):
 
 
 def edit_printer_cfg(text):
-    """Return (new text, notes): drop an old-style include, move its settings, add [punput_shaper]."""
-    notes = []
+    """Return (new text, notes): add [punput_shaper] above the SAVE_CONFIG block unless it is there."""
     lines = text.split("\n")
     trailing_newline = lines[-1] == ""
     if trailing_newline:
         lines.pop()
     end = next((i for i, line in enumerate(lines) if line.startswith(SAVE_CONFIG)), len(lines))
     body, tail = lines[:end], lines[end:]
-
     if any(section_name(line) == "punput_shaper" for line in body):
-        notes.append("printer.cfg already has a [punput_shaper] section")
-        has_section = True
-    else:
-        has_section = False
-
-    kept = [line for line in body if not LEGACY_INCLUDE.match(line)]
-    if len(kept) != len(body):
-        notes.append("removed the old [include punput_shaper/punput_shaper.cfg] line")
-    body = kept
-
-    settings = {}
-    cleaned = []
-    i = 0
-    while i < len(body):
-        if section_name(body[i]) in LEGACY_SECTIONS:
-            i += 1
-            while i < len(body) and section_name(body[i]) is None:
-                option = parse_legacy_option(body[i])
-                if option:
-                    settings[option[0]] = option[1]
-                i += 1
-            notes.append("moved %d setting(s) from the old variables section" % len(settings))
-            continue
-        cleaned.append(body[i])
-        i += 1
-    body = cleaned
-
-    if not has_section:
-        while body and body[-1].strip() == "":
-            body.pop()
-        body += [""] + new_section(settings)
-        if tail:
-            body.append("")
-        notes.append("added a [punput_shaper] section")
-    return "\n".join(body + tail) + ("\n" if trailing_newline else ""), notes
+        return text, ["printer.cfg already has a [punput_shaper] section"]
+    while body and body[-1].strip() == "":
+        body.pop()
+    body += [""] + new_section()
+    if tail:
+        body.append("")
+    return "\n".join(body + tail) + ("\n" if trailing_newline else ""), ["added a [punput_shaper] section"]
 
 
 def edit_moonraker(text, path, origin):
@@ -189,11 +139,20 @@ class Installer:
     def say(self, message):
         print(("[dry run] " if self.dry else "") + message)
 
-    def check(self):
+    def check(self, remove):
+        """Stop before changing anything if the install could not work."""
         if not os.path.isdir(os.path.join(self.klipper, "klippy")):
             sys.exit("Klipper was not found in %s. Use -k to point at it." % self.klipper)
         if not os.path.isfile(os.path.join(REPO, MODULE)):
             sys.exit("%s is missing from %s" % (MODULE, REPO))
+        if remove:
+            return
+        if os.path.lexists(self.module_link) and not os.path.islink(self.module_link):
+            sys.exit("%s exists and is not a link; not touching it" % self.module_link)
+        if os.path.exists(self.printer_cfg) and OLD_STYLE.search(open(self.printer_cfg).read()):
+            sys.exit("printer.cfg still has the older Punput Shaper setup ([include punput_shaper/"
+                     "punput_shaper.cfg] or [gcode_macro _PUNPUT_SHAPER_VARS]). It defines the same "
+                     "PUNPUT_SHAPER command as the plugin, so remove those lines and run this again.")
 
     def link(self, remove):
         source = os.path.join(REPO, MODULE)
@@ -205,8 +164,6 @@ class Installer:
                     os.remove(self.module_link)
                 self.changed = True
             return
-        if os.path.lexists(self.module_link) and not exists:
-            sys.exit("%s exists and is not a link; not touching it" % self.module_link)
         if exists and os.path.realpath(self.module_link) == source:
             self.say("module already linked in %s" % self.module_dir)
             return
@@ -314,10 +271,10 @@ class Installer:
             print("Restart failed (%s). Restart Moonraker and Klipper yourself." % e)
 
     def run(self, remove):
-        self.check()
+        self.check(remove)
+        self.configs(remove)
         self.link(remove)
         self.git_exclude(remove)
-        self.configs(remove)
         self.restart()
         if remove:
             print("\nPunput Shaper is removed. The clone in %s is still there; delete it if you like." % REPO)
