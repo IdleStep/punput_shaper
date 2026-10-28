@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Klipper hosts are Linux: keep these LF in every checkout
+*.py  text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.md  text eol=lf

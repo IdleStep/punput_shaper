@@ -1,83 +1,120 @@
-# 🤣 punput_shaping
+# 🤣 Punput Shaper
 
-Open-API powered comedy for your printer — now shaping for maximum comedic resonance.
+A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensation.html): comedy for your printer, tuned for maximum comedic resonance.
 
-**Punput Shaping periodically fetches jokes from an API and sends them to your Klipper console.**
+**Punput Shaper periodically sends a joke to your Klipper console.** Jokes come from a built-in list of 3D printing puns (works offline) or from a free public joke API.
 
-[View example output](example.png)
+![Console showing a joke](example.png)
+![Console showing a joke between other messages](example2.png)
 
-> ⚠️ **Requires** [Kalico](https://docs.kalico.gg/G-Code_Shell_Command.html?h=gcode_shell_command#passing-parameters) or Klipper with [`gcode_shell_command`](https://github.com/dw-0/kiauh/blob/master/docs/gcode_shell_command.md) extension installed.
+> ⚠️ **Requires** Klipper with the [`gcode_shell_command`](https://github.com/dw-0/kiauh/blob/master/docs/gcode_shell_command.md) extension installed, or [Kalico](https://docs.kalico.gg/G-Code_Shell_Command.html). Python 3 is also required, which Klipper hosts already have.
 
----
+## Installation
 
-## 📦 Installation
+1. Clone the repository into your Klipper config folder:
 
-- Clone the repository into your Klipper config folder:
+   ```bash
+   git clone https://github.com/IdleStep/punput_shaper.git ~/printer_data/config/punput_shaper
+   ```
 
-```bash
-git clone https://github.com/IdleStep/punput_shaping.git ~/printer_data/config/punput_shaping
-```
+2. Add this line to your `printer.cfg`:
 
-- Add this line to your `printer.cfg` to include the repo’s macros and configs:
+   ```ini
+   [include punput_shaper/punput_shaper.cfg]
+   ```
 
-```ini
-[include punput_shaping/punput_shaper.cfg]
-```
+3. *(Optional)* Add the following to your `moonraker.conf` to receive updates through Moonraker:
 
-- **(Optional)** Add a console filter to Mainsail and hide command logs:
+   ```ini
+   [update_manager punput_shaper]
+   type: git_repo
+   origin: https://github.com/IdleStep/punput_shaper.git
+   path: ~/printer_data/config/punput_shaper
+   primary_branch: main
+   is_system_service: False
+   managed_services: klipper
+   ```
 
-  - Navigate to **Settings → Console → Filters → Add Filter**
-  - **Name**: `PunputShaper`
-  - **Regex**: `.*Command \{punput.*\}.*`
+4. *(Optional)* Hide the command log lines in Mainsail under **Settings → Console → Filters → Add Filter**:
 
-- Restart Klipper.
+   - **Name**: `PunputShaper`
+   - **Regex**: `.*Command \{punput.*\}.*`
 
----
+5. Restart Klipper.
 
-### ⚙️ Configuration
+The shell command assumes the standard KIAUH layout: Klipper in `~/klipper` and configs in `~/printer_data/config`.
 
-To reconfigure settings, copy this macro into your `printer.cfg`:
+## Configuration
 
-``` ini
-[gcode_macro _PUNPUTSHAPING_VARS]
-variable_api: "local"                                           #API options: icanhazdadjoke, official, norris, jokeapi, local
-variable_loop_at_startup: True                                       #Begin punput shaping at print start
-variable_loop_drift: 30                                         #30 seconds default
-variable_loop_duration: 900                                     #15 minutes default
-variable_only_while_printing: True                              #Execute only during state of Printing
-gcode:
-```
-
-| Variable | Purpose | Default | Notes |
-| --- | --- | --- | --- |
-| `variable_api` | Selects joke source from supported APIs | `local` | Options: icanhazdadjoke, official, norris, jokeapi, local |
-| `variable_loop_at_startup` | Starts loop automatically | `True` | Otherwise execute `PunputShaping` manually or from another macro |
-| `variable_only_while_printing` | Runs only during active prints | `True` | Disabled when printer is idle |
-| `variable_punputshaping_loop_drift` | Random timing variation (± seconds) | `30` | Prevents perfectly fixed intervals |
-| `variable_punputshaping_loop_duration` | Time between jokes (seconds) | `900` | 900 = every 15 minutes <br> ⚠️ **Be cautious of overusing Open API calls!** |
-
----
-
-## 💡 Tips
-
-### Configure Moonraker
-
-Append the following to your moonraker.conf to enable updates:
+The defaults live in `punput_shaper.cfg`. Don't edit that file, because it would conflict with updates. Instead, add a section to `printer.cfg` **after** the `[include]` line and list only the options you want to change:
 
 ```ini
-[update_manager punput_shaping]
-type: git_repo
-origin: https://github.com/IdleStep/punput_shaping.git
-path: ~/printer_data/config/punput_shaping
-primary_branch: main
-is_system_service: False
-managed_services: klipper
+[gcode_macro _PUNPUT_SHAPER_VARS]
+variable_api: "local"
+variable_loop_at_startup: True
+variable_loop_duration: 900
+variable_loop_drift: 30
+variable_only_while_printing: True
 ```
 
-### 🛠️ Missing Python Library?
+| Variable | Default | Description |
+| --- | --- | --- |
+| `variable_api` | `"local"` | Joke source: `local`, `icanhazdadjoke`, `official`, `norris` or `jokeapi` (see [Joke sources](#joke-sources)) |
+| `variable_loop_at_startup` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
+| `variable_loop_duration` | `900` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
+| `variable_loop_drift` | `30` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
+| `variable_only_while_printing` | `True` | Only tell jokes while Klipper's `idle_timeout` state is `Printing`. This also covers homing, heating and macros, not just print jobs |
 
-You may be missing a required library. Install it with:
+## Usage
+
+Run these in the console, or call them from your own macros:
+
+| Command | Effect |
+| --- | --- |
+| `PUNPUT_SHAPER` | Print one joke now |
+| `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=1` | Start the joke loop |
+| `UPDATE_DELAYED_GCODE ID=PUNPUT_SHAPER_LOOP DURATION=0` | Stop the joke loop |
+
+## Joke sources
+
+| `variable_api` | Source | Notes |
+| --- | --- | --- |
+| `local` | [`punput.txt`](punput.txt) | 3D printing puns, one per line. Works offline. Add your own lines to the file |
+| `icanhazdadjoke` | [icanhazdadjoke](https://icanhazdadjoke.com/) | Dad jokes |
+| `official` | [Official Joke API](https://github.com/15Dkatz/official_joke_api) | Programming jokes |
+| `jokeapi` | [JokeAPI](https://jokeapi.dev/) | Programming jokes with safe mode on |
+| `norris` | [chucknorris.io](https://api.chucknorris.io/) | Chuck Norris facts. This API has no content filter |
+
+Online sources need internet access from the printer's host and time out after 5 seconds.
+
+## Troubleshooting
+
+Run the script by hand to see any error. Replace `local` with the source you use:
 
 ```bash
-sudo apt install python3-requests  # Debian/Ubuntu-based distros
+python3 ~/printer_data/config/punput_shaper/punput_shaper.py local
 ```
+
+If the script works but nothing appears in the console, make sure `gcode_shell_command` is installed and Klipper was restarted.
+
+## Upgrading from punput_shaping
+
+The project was renamed from `punput_shaping` to `punput_shaper`, and the macros were renamed to match. To update an existing install:
+
+1. Move the folder and point Git at the new name:
+
+   ```bash
+   mv ~/printer_data/config/punput_shaping ~/printer_data/config/punput_shaper
+   git -C ~/printer_data/config/punput_shaper remote set-url origin https://github.com/IdleStep/punput_shaper.git
+   git -C ~/printer_data/config/punput_shaper pull
+   ```
+
+2. In `printer.cfg`, change the include to `[include punput_shaper/punput_shaper.cfg]` and rename your override section to `[gcode_macro _PUNPUT_SHAPER_VARS]`. The `variable_*` names are unchanged.
+3. In `moonraker.conf`, rename the section to `[update_manager punput_shaper]` and update `origin` and `path` as shown in [Installation](#installation).
+4. Restart Moonraker and Klipper.
+
+The macros are now `PUNPUT_SHAPER`, `PUNPUT_SHAPER_LOOP` and `PUNPUT_SHAPER_STARTUP`. Update any of your own macros that call the old names.
+
+## License
+
+[GPL-3.0](LICENSE)

@@ -1,57 +1,77 @@
 #!/usr/bin/env python3
-import requests
+"""Print one joke for the Klipper console.
+
+Usage: punput_shaper.py [source]
+
+Sources: icanhazdadjoke, official, norris, jokeapi, local (default)
+"""
+import json
+import os
 import random
 import sys
-import os
+import urllib.error
+import urllib.request
+
+USER_AGENT = "punput_shaper (https://github.com/IdleStep/punput_shaper)"
+TIMEOUT = 4  # seconds; keep below the timeout of the gcode_shell_command
+LOCAL_JOKES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "punput.txt")
+
+
+def fetch_json(url):
+    request = urllib.request.Request(
+        url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
+    )
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        return json.load(response)
+
 
 def get_dadjoke():
-    response = requests.get("https://icanhazdadjoke.com/", headers={"Accept": "application/json"})
-    if response.ok:
-        return response.json().get("joke", "No joke found.")
-    return "Failed to fetch Dad Joke."
+    return fetch_json("https://icanhazdadjoke.com/")["joke"]
+
 
 def get_official_joke():
-    response = requests.get("https://official-joke-api.appspot.com/jokes/programming/random")
-    if response.ok:
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            return data[0].get("setup", "") + " " + data[0].get("punchline", "")
-    return "Failed to fetch Official Joke."
+    joke = fetch_json("https://official-joke-api.appspot.com/jokes/programming/random")[0]
+    return f"{joke['setup']} {joke['punchline']}"
+
 
 def get_chuck_norris():
-    response = requests.get("https://api.chucknorris.io/jokes/random")
-    if response.ok:
-        return response.json().get("value", "No joke found.")
-    return "Failed to fetch Chuck Norris joke."
+    return fetch_json("https://api.chucknorris.io/jokes/random")["value"]
+
 
 def get_jokeapi():
-    response = requests.get("https://v2.jokeapi.dev/joke/Programming?type=single")
-    if response.ok:
-        return response.json().get("joke", "No joke found.")
-    return "Failed to fetch JokeAPI joke."
+    return fetch_json("https://v2.jokeapi.dev/joke/Programming?type=single&safe-mode")["joke"]
+
 
 def get_local_joke():
-    local_file = os.path.join(os.path.dirname(__file__), "punput.txt")
-    if not os.path.isfile(local_file):
-        return "punput.txt not found."
-    with open(local_file, "r", encoding="utf-8") as f:
+    with open(LOCAL_JOKES, encoding="utf-8") as f:
         jokes = [line.strip() for line in f if line.strip()]
-        return random.choice(jokes) if jokes else "No jokes in punput.txt."
+    if not jokes:
+        raise ValueError(f"no jokes found in {LOCAL_JOKES}")
+    return random.choice(jokes)
 
-# Map command-line argument to function
-sources = {
+
+SOURCES = {
     "icanhazdadjoke": get_dadjoke,
-    "officialjoke": get_official_joke,
+    "official": get_official_joke,
     "norris": get_chuck_norris,
     "jokeapi": get_jokeapi,
-    "local": get_local_joke
+    "local": get_local_joke,
 }
 
-# Get argument from command line or use default
-source_key = sys.argv[1].lower() if len(sys.argv) > 1 else "icanhazdadjoke"
-joke_func = sources.get(source_key, get_dadjoke)
 
-try:
-    print(joke_func())
-except Exception as e:
-    print(f"[ERROR] Could not fetch joke: {e}")
+def main(argv):
+    source = argv[1].lower() if len(argv) > 1 else "local"
+    if source not in SOURCES:
+        print(f"[ERROR] Unknown joke source '{source}'. Options: {', '.join(SOURCES)}", file=sys.stderr)
+        return 2
+    try:
+        joke = SOURCES[source]()
+    except (OSError, ValueError, LookupError) as e:
+        print(f"[ERROR] Could not get a joke from '{source}': {e}", file=sys.stderr)
+        return 1
+    print(" ".join(joke.split()))  # collapse any embedded newlines
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
