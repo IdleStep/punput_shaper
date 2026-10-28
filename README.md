@@ -2,7 +2,7 @@
 
 A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensation.html): comedy for your printer, tuned for maximum comedic resonance.
 
-**Punput Shaper periodically sends a joke to your Klipper console.** Jokes come from a built-in list of 3D printing puns (works offline) or from a free public joke API.
+**Punput Shaper periodically sends a joke to your Klipper console.** Jokes come from a built-in list of 3D printing puns (works offline) or from a free public joke, fact or advice API.
 
 ![Mainsail console after running PUNPUT_SHAPER twice, each run printing a printer pun](example_manual.png)
 
@@ -62,7 +62,7 @@ variable_only_while_printing: True
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `variable_api` | `"local"` | Joke source: `local`, `icanhazdadjoke`, `official`, `norris` or `jokeapi` (see [Joke sources](#joke-sources)) |
+| `variable_api` | `"local"` | Joke source: `local`, `icanhazdadjoke`, `official`, `jokeapi`, `pun`, `uselessfacts`, `adviceslip`, `corporatebs` or `norris` (see [Joke sources](#joke-sources)) |
 | `variable_loop_at_startup` | `True` | Start the joke loop when Klipper starts. If `False`, [start it manually](#usage) |
 | `variable_loop_duration` | `900` | Seconds between jokes (900 = 15 minutes). Keep this long when using an online source to avoid hammering the API |
 | `variable_loop_drift` | `30` | Random ± seconds added to each interval, so jokes don't arrive on a fixed beat |
@@ -91,6 +91,10 @@ Run these in the console, or call them from your own macros:
 | `icanhazdadjoke` | [icanhazdadjoke](https://icanhazdadjoke.com/) | Dad jokes |
 | `official` | [Official Joke API](https://github.com/15Dkatz/official_joke_api) | Programming jokes |
 | `jokeapi` | [JokeAPI](https://jokeapi.dev/) | Programming jokes with safe mode on |
+| `pun` | [JokeAPI](https://jokeapi.dev/) | Puns, one-liners and two-parters, with safe mode on. About 45 to choose from, so expect repeats over a long day |
+| `uselessfacts` | [Useless Facts](https://uselessfacts.jsph.pl/) | Random "useless but true" facts. This API has no content filter |
+| `adviceslip` | [Advice Slip](https://api.adviceslip.com/) | Short pieces of everyday advice, from "Always the burrito." to jar-opening tips. This API has no content filter |
+| `corporatebs` | [Corporate BS Generator](https://github.com/sameerkumar18/corporate-bs-generator-api) | Made-up corporate buzzword phrases like "Dynamically Visualize Synergistic Systems" |
 | `norris` | [chucknorris.io](https://api.chucknorris.io/) | Chuck Norris facts. This API has no content filter |
 
 Online sources need internet access from the printer's host and time out after 5 seconds.

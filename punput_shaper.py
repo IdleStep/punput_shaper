@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Print one joke for the Klipper console.
+"""Print one joke, fact or piece of advice for the Klipper console.
 
 Usage: punput_shaper.py [source]
 
-Sources: icanhazdadjoke, official, norris, jokeapi, local (default)
+Sources: icanhazdadjoke, official, norris, jokeapi, pun, uselessfacts, adviceslip,
+corporatebs, local (default)
 """
 import json
 import os
@@ -42,6 +43,26 @@ def get_jokeapi():
     return fetch_json("https://v2.jokeapi.dev/joke/Programming?type=single&safe-mode")["joke"]
 
 
+def get_pun():
+    joke = fetch_json("https://v2.jokeapi.dev/joke/Pun?safe-mode")
+    if joke["type"] == "twopart":
+        return f"{joke['setup']} {joke['delivery']}"
+    return joke["joke"]
+
+
+def get_useless_fact():
+    fact = fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+    return fact.replace("`", "'")  # the API writes apostrophes as backticks
+
+
+def get_advice():
+    return fetch_json("https://api.adviceslip.com/advice")["slip"]["advice"]
+
+
+def get_corporate_bs():
+    return fetch_json("https://corporatebs-generator.sameerkumar.website/")["phrase"]
+
+
 def get_local_joke():
     with open(LOCAL_JOKES, encoding="utf-8") as f:
         jokes = [line.strip() for line in f if line.strip()]
@@ -55,6 +76,10 @@ SOURCES = {
     "official": get_official_joke,
     "norris": get_chuck_norris,
     "jokeapi": get_jokeapi,
+    "pun": get_pun,
+    "uselessfacts": get_useless_fact,
+    "adviceslip": get_advice,
+    "corporatebs": get_corporate_bs,
     "local": get_local_joke,
 }
 
