@@ -43,7 +43,10 @@ def get_jokeapi():
 
 
 def get_pun():
-    return fetch_json("https://v2.jokeapi.dev/joke/Pun?type=single&safe-mode")["joke"]
+    joke = fetch_json("https://v2.jokeapi.dev/joke/Pun?safe-mode")
+    if joke["type"] == "twopart":
+        return f"{joke['setup']} {joke['delivery']}"
+    return joke["joke"]
 
 
 def get_geek_joke():
@@ -51,7 +54,8 @@ def get_geek_joke():
 
 
 def get_useless_fact():
-    return fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+    fact = fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
+    return fact.replace("`", "'")  # the API writes apostrophes as backticks
 
 
 def get_advice():
