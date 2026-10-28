@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Print one joke for the Klipper console.
+"""Print one joke, fact or piece of advice for the Klipper console.
 
 Usage: punput_shaper.py [source]
 
-Sources: icanhazdadjoke, official, norris, jokeapi, local (default)
+Sources: icanhazdadjoke, official, norris, jokeapi, pun, uselessfacts, adviceslip,
+corporatebs, local (default)
 """
 import json
 import os
@@ -31,6 +32,15 @@ def fetch_json(url):
         return json.load(response)
 
 
+def first_suitable(fetch, tries=3):
+    """Call fetch() until its text passes the UNSUITABLE check; the APIs have no filter of their own."""
+    for _ in range(tries):
+        text = fetch()
+        if not UNSUITABLE.search(text):
+            return text
+    raise ValueError(f"no suitable text after {tries} tries")
+
+
 def get_dadjoke():
     return fetch_json("https://icanhazdadjoke.com/")["joke"]
 
@@ -55,19 +65,6 @@ def get_pun():
     return joke["joke"]
 
 
-def get_geek_joke():
-    return fetch_json("https://geek-jokes.sameerkumar.website/api?format=json")["joke"]
-
-
-def first_suitable(fetch, tries=3):
-    """Call fetch() until its text passes the UNSUITABLE check; the APIs have no filter of their own."""
-    for _ in range(tries):
-        text = fetch()
-        if not UNSUITABLE.search(text):
-            return text
-    raise ValueError(f"no suitable text after {tries} tries")
-
-
 def get_useless_fact():
     fact = first_suitable(
         lambda: fetch_json("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en")["text"]
@@ -81,14 +78,6 @@ def get_advice():
 
 def get_corporate_bs():
     return fetch_json("https://corporatebs-generator.sameerkumar.website/")["phrase"]
-
-
-def get_cat_fact():
-    return fetch_json("https://catfact.ninja/fact")["fact"]
-
-
-def get_excuse():
-    return fetch_json("https://excuser-three.vercel.app/v1/excuse")[0]["excuse"]
 
 
 def get_local_joke():
@@ -105,12 +94,9 @@ SOURCES = {
     "norris": get_chuck_norris,
     "jokeapi": get_jokeapi,
     "pun": get_pun,
-    "geekjokes": get_geek_joke,
     "uselessfacts": get_useless_fact,
     "adviceslip": get_advice,
     "corporatebs": get_corporate_bs,
-    "catfacts": get_cat_fact,
-    "excuser": get_excuse,
     "local": get_local_joke,
 }
 
