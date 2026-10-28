@@ -105,6 +105,7 @@ class PunputShaper:
         self.thread = None
         self.timer = self.reactor.register_timer(self._loop_event, self.reactor.NEVER)
         self.printer.register_event_handler("klippy:ready", self._handle_ready)
+        self.printer.register_event_handler("klippy:shutdown", self._handle_shutdown)
         self.gcode.register_command(
             "PUNPUT_SHAPER", self.cmd_PUNPUT_SHAPER,
             desc="Print one joke now. Optional SOURCE=<name> tries another source")
@@ -126,6 +127,9 @@ class PunputShaper:
         # Moonraker is not listening for console output yet when Klipper becomes ready.
         self.reactor.register_callback(
             lambda eventtime: self.gcode.respond_info(message), self.reactor.monotonic() + 3.0)
+
+    def _handle_shutdown(self):
+        self.reactor.update_timer(self.timer, self.reactor.NEVER)
 
     def _loop_event(self, eventtime):
         if self._may_tell(eventtime):
