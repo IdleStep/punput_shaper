@@ -108,13 +108,14 @@ class PunputShaper:
     def _handle_ready(self):
         if self.loop_at_startup:
             self.reactor.update_timer(self.timer, self.reactor.monotonic() + self.loop_duration)
-            self.gcode.respond_info(
-                "\U0001F601 Punput Shaper: jokes every ~%ds from '%s' (only while printing: %s)"
-                % (self.loop_duration, self.source, self.only_while_printing))
+            message = ("\U0001F601 Punput Shaper: jokes every ~%ds from '%s' (only while printing: %s)"
+                       % (self.loop_duration, self.source, self.only_while_printing))
         else:
-            self.gcode.respond_info(
-                "⚠️ Punput Shaper: loop not started (loop_at_startup is False). "
-                "Run PUNPUT_SHAPER_START to begin.")
+            message = ("⚠️ Punput Shaper: loop not started (loop_at_startup is False). "
+                       "Run PUNPUT_SHAPER_START to begin.")
+        # Moonraker is not listening for console output yet when Klipper becomes ready.
+        self.reactor.register_callback(
+            lambda eventtime: self.gcode.respond_info(message), self.reactor.monotonic() + 3.0)
 
     def _loop_event(self, eventtime):
         if self._may_tell(eventtime):
