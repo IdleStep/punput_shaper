@@ -34,10 +34,12 @@ A pun on Klipper's [input shaper](https://www.klipper3d.org/Resonance_Compensati
    managed_services: klipper
    ```
 
-4. *(Optional)* Hide the command log lines in Mainsail under **Settings → Console → Filters → Add Filter**:
+4. *(Recommended)* Add a console filter in Mainsail so each joke isn't surrounded by `Running Command {punput_shaper}...` and `Command {punput_shaper} finished` lines. Go to **Settings → Console → Filters → Add Filter**:
 
-   - **Name**: `PunputShaper`
+   - **Name**: `punput`
    - **Regex**: `.*Command \{punput.*\}.*`
+
+   The screenshots below were taken with this filter enabled.
 
 5. Restart Klipper.
 
@@ -78,7 +80,7 @@ Starting the loop, letting it run, and stopping it again. This capture used `var
 
 ![Mainsail console showing the loop being started, three jokes arriving about eight seconds apart, and the loop being stopped](example_loop.png)
 
-The `Running Command` and `finished` lines come from `gcode_shell_command`. The optional console filter from [Installation](#installation) hides them.
+Without the console filter from [Installation](#installation), `gcode_shell_command` also prints a `Running Command` line and a `finished` line around every joke.
 
 ## Joke sources
 
