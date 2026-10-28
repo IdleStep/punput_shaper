@@ -92,8 +92,8 @@ Run these in the console, or call them from your own macros:
 | `official` | [Official Joke API](https://github.com/15Dkatz/official_joke_api) | Programming jokes |
 | `jokeapi` | [JokeAPI](https://jokeapi.dev/) | Programming jokes with safe mode on |
 | `pun` | [JokeAPI](https://jokeapi.dev/) | Puns, one-liners and two-parters, with safe mode on. About 45 to choose from, so expect repeats over a long day |
-| `uselessfacts` | [Useless Facts](https://uselessfacts.jsph.pl/) | Random "useless but true" facts. Facts that mention sex, rape, murder, suicide or abuse are skipped |
-| `adviceslip` | [Advice Slip](https://api.adviceslip.com/) | Short pieces of everyday advice, from "Always the burrito." to jar-opening tips. The same words are skipped |
+| `uselessfacts` | [Useless Facts](https://uselessfacts.jsph.pl/) | Random "useless but true" facts. This API has no content filter |
+| `adviceslip` | [Advice Slip](https://api.adviceslip.com/) | Short pieces of everyday advice, from "Always the burrito." to jar-opening tips. This API has no content filter |
 | `corporatebs` | [Corporate BS Generator](https://github.com/sameerkumar18/corporate-bs-generator-api) | Made-up corporate buzzword phrases like "Dynamically Visualize Synergistic Systems" |
 | `norris` | [chucknorris.io](https://api.chucknorris.io/) | Chuck Norris facts. This API has no content filter |
 
