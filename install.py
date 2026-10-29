@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 REPO = os.path.dirname(os.path.realpath(__file__))
@@ -216,6 +217,15 @@ class Installer:
         with urllib.request.urlopen(request, timeout=30) as response:
             return json.load(response)
 
+    def service_names(self):
+        """This instance's Moonraker and Klipper unit names; with several printers on one host they are not
+        the defaults, and restarting the defaults would restart the wrong printer."""
+        try:
+            ids = self.api("/machine/system_info")["result"]["system_info"]["instance_ids"]
+            return ids["moonraker"], ids["klipper"]
+        except (urllib.error.URLError, OSError, KeyError, ValueError, TypeError):
+            return "moonraker", "klipper"
+
     def restart(self):
         if not self.changed:
             self.say("nothing changed, so nothing was restarted")
@@ -232,9 +242,10 @@ class Installer:
         if state in ("printing", "paused"):
             print("A print is running or paused, so nothing was restarted. Restart Klipper when it is done.")
             return
-        print("restarting Moonraker, then Klipper")
+        moonraker, klipper = self.service_names()
+        print("restarting %s, then %s" % (moonraker, klipper))
         try:
-            self.api("/machine/services/restart?service=moonraker", post=True)
+            self.api("/machine/services/restart?service=" + urllib.parse.quote(moonraker), post=True)
             for _ in range(30):
                 time.sleep(1)
                 try:
@@ -242,7 +253,7 @@ class Installer:
                     break
                 except (urllib.error.URLError, OSError, ValueError):
                     continue
-            self.api("/machine/services/restart?service=klipper", post=True)
+            self.api("/machine/services/restart?service=" + urllib.parse.quote(klipper), post=True)
         except (urllib.error.URLError, OSError, ValueError) as e:
             print("Restart failed (%s). Restart Moonraker and Klipper yourself." % e)
 
