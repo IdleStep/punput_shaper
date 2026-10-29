@@ -122,6 +122,8 @@ To try a source without editing `printer.cfg`, name it in the command, for examp
 
 If `[punput_shaper]` is reported as an unknown section, the module isn't linked into Klipper. Run `python3 punput_shaper/install.py` again and restart Klipper.
 
+With several printers on one host, pass each one's config directory and Moonraker address (`-c ~/printer_2_data/config --moonraker-url http://localhost:7126`). They share one link in Klipper, so `--uninstall` on one printer breaks the others at their next restart until you run the installer again.
+
 If you move the clone, fix `path:` in the `[update_manager punput_shaper]` section of `moonraker.conf` and run the installer again. The installer doesn't change a section that is already there.
 
 If jokes don't appear, look for the module's messages in the Klipper log:
